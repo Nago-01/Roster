@@ -6,8 +6,6 @@ import sqlite3
 from sqlite3 import Error
 from datetime import datetime, timedelta
 import calendar
-from ics import Calendar, Event
-from io import StringIO, BytesIO
 import xlsxwriter
 
 # ======================
@@ -371,27 +369,7 @@ try:
             "text/csv"
         )
 
-        # ICS Calendar Export
-        cal = Calendar()
-        for _, row in roster_df.iterrows():
-            pharmacist_name = row.iloc[0]
-            for date_col in roster_df.columns[1:]:
-                assignment = row[date_col]
-                if pd.notna(assignment):
-                    event = Event()
-                    event.name = f"{pharmacist_name}: {str(assignment).split(' (N)')[0]}"
-                    event.begin = datetime.strptime(date_col, '%Y-%m-%d').date()
-                    event.end = event.begin + timedelta(days=1)
-                    if '(N)' in str(assignment):
-                        event.description = "Night Shift"
-                    cal.events.add(event)
         
-        st.download_button(
-            "📅 Download Calendar",
-            cal.serialize(),
-            f"roster_{datetime.now().strftime('%Y-%m')}.ics",
-            "text/calendar"
-        )
 except Error as e:
     st.warning("No roster generated for this month yet")
 
