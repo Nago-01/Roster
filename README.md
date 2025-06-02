@@ -17,28 +17,26 @@
    - CSV  
    - ICS calendar file  
 
-## **How It Works**  
-1. **Input Pharmacist List** via UI (name + last unit assignment)  
-2. **Algorithm Logic**:  
-   - Avoids consecutive same-unit assignments  
-   - Rotates night calls equitably (prioritizes those who haven't done recent nights)  
-   - Splits dispensary staff into AM/PM groups alternating biweekly  
-3. **Output**: Interactive calendar view + exportable files  
+## **Installation**  
+```bash
+pip install streamlit pandas sqlite3 ics xlsxwriter
+```
 
 ## **Quick Start**  
-1. Install requirements:  
-   ```bash
-   pip install streamlit pandas sqlite3 ics xlsxwriter
-   ```
+1. Install requirements (see above)
 2. Run the app:  
    ```bash
    streamlit run pharmacist_roster_app.py
    ```
 3. Access UI at `localhost:8501`
 
+## **Troubleshooting**  
+If you get `ModuleNotFoundError: No module named 'ics'`:  
+```bash
+pip install ics  # Install the missing package
+```
 
-
-## **📂 Database Schema**  
+## **Database Schema**  
 - `pharmacists` table:  
   ```sql
   (name TEXT PRIMARY KEY, last_unit TEXT, last_night_call TEXT)
@@ -48,7 +46,7 @@
   (month TEXT PRIMARY KEY, roster_data BLOB)
   ```  
 
-## **⚠️ Current Limitations**  
-- No leave request handling  
-- Manual pharmacist entry required  
-- Fixed to current month only  
+## **📜 License**  
+MIT License - Free for hospital/academic use  
+
+---
