@@ -6,8 +6,16 @@ import sqlite3
 from sqlite3 import Error
 from datetime import datetime, timedelta
 import calendar
-from io import StringIO, BytesIO
 import xlsxwriter
+# Attempt to import StringIO and BytesIO for compatibility
+try:
+    from io import StringIO, BytesIO
+except ImportError:
+    # Fallback for environments with broken io module
+    import io
+    StringIO = io.StringIO
+    BytesIO = io.BytesIO
+
 
 # ======================
 # DATABASE SETUP
