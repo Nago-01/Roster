@@ -1,7 +1,7 @@
 # **Automated Pharmacist Roster System**  
 *A Streamlit-powered tool for fair shift scheduling in hospital pharmacies*
 
-## **Key Features**  
+# **Key Features**  
 ✅ **Automated Monthly Scheduling** - Generates balanced AM/PM dispensary rotations  
 ✅ **Night Shift Management** - Tracks and rotates night call assignments fairly  
 ✅ **Unit-Based Assignments** - Distributes pharmacists across:  
@@ -15,14 +15,13 @@
 ✅ **Multi-Format Export** - Download as:  
    - Excel (with night shift highlighting)  
    - CSV  
-   - ICS calendar file  
 
-## **Installation**  
+# **Installation**  
 ```bash
 pip install streamlit pandas sqlite3 ics xlsxwriter
 ```
 
-## **Quick Start**  
+# **Quick Start**  
 1. Install requirements (see above)
 2. Run the app:  
    ```bash
@@ -30,13 +29,8 @@ pip install streamlit pandas sqlite3 ics xlsxwriter
    ```
 3. Access UI at `localhost:8501`
 
-## **Troubleshooting**  
-If you get `ModuleNotFoundError: No module named 'ics'`:  
-```bash
-pip install ics  # Install the missing package
-```
 
-## **Database Schema**  
+# **Database Schema**  
 - `pharmacists` table:  
   ```sql
   (name TEXT PRIMARY KEY, last_unit TEXT, last_night_call TEXT)
@@ -46,7 +40,5 @@ pip install ics  # Install the missing package
   (month TEXT PRIMARY KEY, roster_data BLOB)
   ```  
 
-## **📜 License**  
-MIT License - Free for hospital/academic use  
 
 ---

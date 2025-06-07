@@ -17,9 +17,7 @@ except ImportError:
     BytesIO = io.BytesIO
 
 
-# ======================
 # DATABASE SETUP
-# ======================
 def create_connection():
     """Create a database connection with error handling"""
     try:
@@ -71,9 +69,9 @@ def init_db():
 
 conn = init_db()
 
-# ======================
+
 # CORE LOGIC FUNCTIONS
-# ======================
+
 def get_available(pharmacists, last_units, unit, exclude_list):
     return [p for p in pharmacists if last_units.get(p, "") != unit and p not in exclude_list]
 
@@ -87,7 +85,7 @@ def generate_roster(pharmacists, last_units, force_update=False):
     month_key = f"{current_year}-{current_month:02d}"
     cursor = conn.cursor()
 
-    # 1. CHECK FOR EXISTING ROSTER
+    # CHECK FOR EXISTING ROSTER
     if not force_update:
         try:
             cursor.execute("SELECT roster_data FROM roster_log WHERE month = ?", (month_key,))
@@ -97,7 +95,7 @@ def generate_roster(pharmacists, last_units, force_update=False):
         except Error as e:
             st.warning(f"⚠️ Roster load failed: {e}")
 
-    # 2. GET PREVIOUS MONTH'S ACTUAL ASSIGNMENTS
+    # GET PREVIOUS MONTH'S ACTUAL ASSIGNMENTS
     prev_month = (current_month - 2) % 12 + 1
     prev_year = current_year if current_month > 1 else current_year - 1
     prev_key = f"{prev_year}-{prev_month:02d}"
@@ -133,11 +131,11 @@ def generate_roster(pharmacists, last_units, force_update=False):
     except Error as e:
         st.warning(f"⚠️ Previous month data load failed: {e}")
 
-    # 3. USE ACTUAL DATA WHERE AVAILABLE
+    # USE ACTUAL DATA WHERE AVAILABLE
     effective_units = {**last_units, **actual_units}
     effective_night_status = {p: actual_night_status.get(p, 'No') for p in pharmacists}
 
-    # 4. PHARMACIST ASSIGNMENT (YOUR ORIGINAL LOGIC)
+    # PHARMACIST ASSIGNMENT (YOUR ORIGINAL LOGIC)
     total_pharmacists = len(pharmacists)
     external_posting = random.sample(
         get_available(pharmacists, effective_units, 'External', []),
@@ -151,7 +149,7 @@ def generate_roster(pharmacists, last_units, force_update=False):
     )
     remaining = [p for p in remaining if p not in store]
 
-    # 5. DISPENSARY ASSIGNMENT (YOUR ORIGINAL LOGIC)
+    # DISPENSARY ASSIGNMENT (YOUR ORIGINAL LOGIC)
     dispensaries = ['Dis1', 'Dis2', 'Dis3']
     base_count = len(remaining) // 3
     remainder = len(remaining) % 3
@@ -169,7 +167,7 @@ def generate_roster(pharmacists, last_units, force_update=False):
             'PM': assigned[half:]
         }
 
-    # 6. BUILD SCHEDULE (YOUR ORIGINAL LOGIC)
+    # BUILD SCHEDULE (YOUR ORIGINAL LOGIC)
     full_schedule = {}
     days = get_month_days(current_year, current_month)
     for p in pharmacists:
@@ -188,7 +186,7 @@ def generate_roster(pharmacists, last_units, force_update=False):
                         full_schedule[p][date_str] = f"{dis} ({'AM' if is_am else 'PM'})"
                         break
 
-    # 7. NIGHT CALL ASSIGNMENT (MODIFIED TO USE EFFECTIVE STATUS)
+    # NIGHT CALL ASSIGNMENT (MODIFIED TO USE EFFECTIVE STATUS)
     eligible_for_calls = [p for p in pharmacists if p not in external_posting]
     nights = get_month_days(current_year, current_month)
     
@@ -201,7 +199,7 @@ def generate_roster(pharmacists, last_units, force_update=False):
         for i, date in enumerate(nights)
     }
     
-    # 8. UPDATE STATUS (ONLY ELIGIBLE PHARMACISTS)
+    # UPDATE STATUS (ONLY ELIGIBLE PHARMACISTS)
     try:
         for p in eligible_for_calls:
             cursor.execute(
@@ -218,7 +216,7 @@ def generate_roster(pharmacists, last_units, force_update=False):
     for date, p in assigned_night_calls.items():
         full_schedule[p][date] += " (N)"
 
-    # 9. SAVE ROSTER
+    # SAVE ROSTER
     calendar_df = pd.DataFrame(full_schedule).T.reset_index()
     roster_data = {
         'calendar_df': calendar_df,
@@ -241,9 +239,9 @@ def generate_roster(pharmacists, last_units, force_update=False):
 
     return calendar_df, assigned_night_calls, shift_groups
 
-# ======================
+
 # STREAMLIT UI
-# ======================
+
 st.set_page_config(page_title="Pharmacist Roster App", layout="wide")
 st.title("📅 Pharmacist Roster Generator")
 
@@ -259,7 +257,7 @@ if st.button("🧹 Clear All Data"):
                 st.success("All data cleared successfully!")
                 st.balloons()
 
-# 2. PHARMACIST MANAGEMENT
+# PHARMACIST MANAGEMENT
 with st.form("add_pharmacist", clear_on_submit=True):
     cols = st.columns(3)
     with cols[0]: new_name = st.text_input("Pharmacist Name", placeholder="Dr. Jane Doe")
@@ -275,7 +273,7 @@ with st.form("add_pharmacist", clear_on_submit=True):
         conn.commit()
         st.success(f"Added {new_name}")
 
-# 3. PHARMACIST EDITING
+# PHARMACIST EDITING
 pharmacists_df = pd.read_sql("SELECT * FROM pharmacists ORDER BY name", conn)
 if not pharmacists_df.empty:
     edited_df = st.data_editor(pharmacists_df, num_rows="dynamic", use_container_width=True)
@@ -289,7 +287,7 @@ if not pharmacists_df.empty:
         conn.commit()
         st.success("Pharmacist data updated!")
 
-# 4. ROSTER GENERATION
+# ROSTER GENERATION
 col1, col2 = st.columns(2)
 with col1:
     if st.button("🔄 Generate Monthly Roster", type="primary"):
