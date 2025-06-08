@@ -7,6 +7,7 @@ from sqlite3 import Error
 from datetime import datetime, timedelta
 import calendar
 import xlsxwriter
+from dateutil.relativedelta import relativedelta
 # Attempt to import StringIO and BytesIO for compatibility
 try:
     from io import StringIO, BytesIO
@@ -21,6 +22,14 @@ except ImportError:
 def create_connection():
     """Create a database connection with error handling"""
     try:
+        # Close existing connection if any
+        if 'conn' in globals():
+            try: 
+                globals()['conn'].close()
+            except:
+                pass
+                
+        # Create new connection
         conn = sqlite3.connect("pharmacist_roster.db", 
                              check_same_thread=False,
                              timeout=30)
@@ -28,6 +37,16 @@ def create_connection():
     except Error as e:
         st.error(f"🚨 Database connection failed: {e}")
         return None
+    
+def verify_connection():
+    """Check if connection is alive"""
+    try:
+        conn.execute("SELECT 1")
+    except:
+        global conn
+        conn = create_connection()
+        if not conn:
+            handle_db_error("Database connection failed")
 
 def init_db():
     """Initialize database tables with schema validation"""
@@ -68,7 +87,13 @@ def init_db():
         st.stop()
 
 conn = init_db()
-
+def handle_db_error(error_msg):
+    """Standardized database error handler"""
+    st.error(f"🚨 {error_msg}")
+    if conn:  # Safely close connection if exists
+        try: conn.close()
+        except: pass
+    st.stop()
 
 # CORE LOGIC FUNCTIONS
 
@@ -80,6 +105,7 @@ def get_month_days(year, month):
     return [datetime(year, month, day) for day in range(1, num_days + 1)]
 
 def generate_roster(pharmacists, last_units, force_update=False):
+    verify_connection()
     current_year = datetime.now().year
     current_month = datetime.now().month
     month_key = f"{current_year}-{current_month:02d}"
@@ -96,8 +122,9 @@ def generate_roster(pharmacists, last_units, force_update=False):
             st.warning(f"⚠️ Roster load failed: {e}")
 
     # GET PREVIOUS MONTH'S ACTUAL ASSIGNMENTS
-    prev_month = (current_month - 2) % 12 + 1
-    prev_year = current_year if current_month > 1 else current_year - 1
+    prev_date = datetime.now() - relativedelta(months=1)
+    prev_month = prev_date.month
+    prev_year = prev_date.year
     prev_key = f"{prev_year}-{prev_month:02d}"
     
     actual_units = {}
@@ -278,14 +305,41 @@ pharmacists_df = pd.read_sql("SELECT * FROM pharmacists ORDER BY name", conn)
 if not pharmacists_df.empty:
     edited_df = st.data_editor(pharmacists_df, num_rows="dynamic", use_container_width=True)
     if st.button("💾 Save Changes"):
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM pharmacists")
-        cursor.executemany(
-            "INSERT INTO pharmacists VALUES (?, ?, ?)",
-            edited_df[['name', 'last_unit', 'last_night_call']].to_records(index=False)
-        )
-        conn.commit()
-        st.success("Pharmacist data updated!")
+        verify_connection()
+        try:
+            # Refresh connection to prevent stale connections
+            cursor = conn.cursor()
+            
+            # 1. Verify required columns exist
+            required_columns = ['name', 'last_unit', 'last_night_call']
+            if not all(col in edited_df.columns for col in required_columns):
+                st.error("Error: Missing required columns in the data!")
+                st.stop()
+            
+            # 2. Convert DataFrame to list of tuples
+            data = edited_df[required_columns].values.tolist()
+            
+            # 3. Validate data types
+            for i, row in enumerate(data):
+                if not isinstance(row[0], str) or len(row[0].strip()) == 0:
+                    st.error(f"Row {i+1}: Invalid pharmacist name '{row[0]}'")
+                    st.stop()
+            
+            # 4. Update database
+            cursor.execute("DELETE FROM pharmacists")
+            cursor.executemany(
+                "INSERT INTO pharmacists VALUES (?, ?, ?)",
+                data
+            )
+            conn.commit()
+            st.success("Pharmacist data updated successfully!")
+            st.rerun()  # Refresh the UI
+            
+        except Exception as e:
+            st.error(f"🚨 Failed to save changes: {str(e)}")
+            conn.rollback()
+            # Debugging info
+            st.error(f"Problematic data sample: {data[:3] if 'data' in locals() else 'N/A'}")
 
 # ROSTER GENERATION
 col1, col2 = st.columns(2)
@@ -377,7 +431,18 @@ try:
         )
 
         
-except Error as e:
-    st.warning("No roster generated for this month yet")
+except Exception as e:
+    st.error(f"🚨 Export failed: {str(e)}")
+    if 'excel_buffer' in locals(): excel_buffer.close()
+    if 'csv_buffer' in locals(): csv_buffer.close()
+else:
+    # Only show success message if no errors
+    st.success("Exports generated successfully")
 
-conn.close()
+try:
+    if conn:
+        conn.commit()  # Ensure any pending changes are saved
+except Error as e:
+    st.error(f"🚨 Final commit failed: {e}")
+finally:
+    conn.close() if conn else None
