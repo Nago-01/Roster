@@ -65,10 +65,12 @@ def create_connection():
 
 def verify_connection():
     """Check if connection is alive"""
+    global conn
+
     try:
         conn.execute("SELECT 1")
     except:
-        global conn
+
         conn = create_connection()
         if not conn:
             handle_db_error("Database connection failed")
