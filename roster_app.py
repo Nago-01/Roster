@@ -306,23 +306,45 @@ def generate_roster(pharmacists, last_units, force_update=False):
     }
 
     try:
-        buf = BytesIO()
-        pd.to_pickle(roster_data, buf)
-        cursor.execute(
-            "REPLACE INTO roster_log (month, roster_data) VALUES (?, ?)",
-            (month_key, buf.getvalue()),
-        )
+        # Update last_unit and last_night_call for all pharmacists
+        for pharmacist in pharmacists:
+            # Get assigned unit from the new roster (most frequent assignment)
+            assignments = full_schedule[pharmacist].values()
+            primary_unit = max(set(assignments), key=list(assignments).count)
+
+            # Clean unit string (remove shift info)
+            clean_unit = (
+                primary_unit.split("(")[0].strip()
+                if "(" in primary_unit
+                else primary_unit
+            )
+
+            # Determine night call status
+            night_call_status = (
+                "Yes"
+                if any("(N)" in day for day in full_schedule[pharmacist].values())
+                else "No"
+            )
+
+            # Update database
+            cursor.execute(
+                """UPDATE pharmacists 
+                SET last_unit = ?, 
+                    last_night_call = ? 
+                WHERE name = ?""",
+                (clean_unit, night_call_status, pharmacist),
+            )
+
         conn.commit()
     except Error as e:
-        st.error(f"🚨 Failed to save roster: {e}")
         conn.rollback()
+        st.error(f"🚨 Failed to update pharmacist records: {e}")
         return None, None, None
 
     return calendar_df, assigned_night_calls, shift_groups
 
 
 # STREAMLIT UI
-
 st.set_page_config(page_title="Pharmacist Roster App", layout="wide")
 st.title("📅 Pharmacist Roster Generator")
 
