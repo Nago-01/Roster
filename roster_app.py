@@ -20,22 +20,26 @@ except ImportError:
 
 # DATABASE SETUP
 def create_connection():
-    """Create a database connection with error handling"""
+    """Create or refresh a database connection with better error handling"""
+    global conn  # Ensure we're modifying the global connection
+    
     try:
-        # Close existing connection if any
-        if 'conn' in globals():
-            try: 
-                globals()['conn'].close()
-            except:
+        # Close existing connection if it exists
+        if 'conn' in globals() and conn:
+            try:
+                conn.close()
+            except Error:
                 pass
                 
-        # Create new connection
-        conn = sqlite3.connect("pharmacist_roster.db", 
+        # Create new connection with optimized settings
+        conn = sqlite3.connect("pharmacist_roster.db",
                              check_same_thread=False,
-                             timeout=30)
+                             timeout=30,
+                             isolation_level=None)  # For better transaction control
+        conn.execute("PRAGMA journal_mode=WAL")  # Better concurrency
         return conn
     except Error as e:
-        st.error(f"🚨 Database connection failed: {e}")
+        handle_db_error(f"Database connection failed: {e}")
         return None
     
 def verify_connection():
