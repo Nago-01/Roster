@@ -75,11 +75,14 @@ pip install streamlit pandas xlsxwriter
 
 ## **Database Schema**
 
-- `pharmacists` table:  
+- `pharmacists` table: 
+
   ```sql
   (name TEXT PRIMARY KEY, last_unit TEXT, last_night_call TEXT)
   ```
+
 - `roster_log` table:  
+
   ```sql
   (month TEXT PRIMARY KEY, roster_data BLOB)
   ```
